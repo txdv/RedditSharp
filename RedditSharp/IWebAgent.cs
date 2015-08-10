@@ -4,11 +4,8 @@ using Newtonsoft.Json.Linq;
 
 namespace RedditSharp
 {
-    public interface IWebAgent
+    public interface IWebAgent : IWebAgentBase
     {
-        CookieContainer Cookies { get; set; }
-        string AuthCookie { get; set; }
-        string AccessToken { get; set; }
         HttpWebRequest CreateRequest(string url, string method);
         HttpWebRequest CreateGet(string url);
         HttpWebRequest CreatePost(string url);

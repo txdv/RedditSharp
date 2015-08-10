@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Dynamic;
 using System.IO;
 using System.Linq;
@@ -12,7 +13,7 @@ using Newtonsoft.Json.Linq;
 
 namespace RedditSharp
 {
-    public sealed class WebAgent : IWebAgent
+    public sealed partial class WebAgent : IWebAgent
     {
         /// <summary>
         /// Additional values to append to the default RedditSharp user agent.
@@ -107,7 +108,11 @@ namespace RedditSharp
             EnforceRateLimit();
             var response = request.GetResponse();
             var result = GetResponseString(response.GetResponseStream());
+            return ExecuteRequestBase(result);
+        }
 
+        private JToken ExecuteRequestBase(string result)
+        {
             var json = JToken.Parse(result);
             try
             {
@@ -141,11 +146,18 @@ namespace RedditSharp
         [MethodImpl(MethodImplOptions.Synchronized)]
         private static void EnforceRateLimit()
         {
+            foreach (var timeout in EnforceRateLimitEnumerable()) {
+                Thread.Sleep(timeout);
+            }
+        }
+
+        private static IEnumerable<int> EnforceRateLimitEnumerable()
+        {
             switch (RateLimit)
             {
                 case RateLimitMode.Pace:
                     while ((DateTime.UtcNow - _lastRequest).TotalSeconds < 2)// Rate limiting
-                        Thread.Sleep(250);
+                        yield return 250;
                     _lastRequest = DateTime.UtcNow;
                     break;
                 case RateLimitMode.SmallBurst:
@@ -154,7 +166,7 @@ namespace RedditSharp
                     if (_requestsThisBurst >= 5) //limit has been reached
                     {
                         while ((DateTime.UtcNow - _burstStart).TotalSeconds < 10)
-                            Thread.Sleep(250);
+                            yield return 250;
                         _burstStart = DateTime.UtcNow;
                         _requestsThisBurst = 0;
                     }
@@ -166,7 +178,7 @@ namespace RedditSharp
                     if (_requestsThisBurst >= 30) //limit has been reached
                     {
                         while ((DateTime.UtcNow - _burstStart).TotalSeconds < 60)
-                            Thread.Sleep(250);
+                            yield return 250;
                         _burstStart = DateTime.UtcNow;
                         _requestsThisBurst = 0;
                     }
@@ -178,6 +190,11 @@ namespace RedditSharp
         public HttpWebRequest CreateRequest(string url, string method)
         {
             EnforceRateLimit();
+            return CreateRequestBase(url, method);
+        }
+
+        public HttpWebRequest CreateRequestBase(string url, string method)
+        {
             bool prependDomain;
             // IsWellFormedUriString returns true on Mono for some reason when using a string like "/api/me"
             if (Type.GetType("Mono.Runtime") != null)
@@ -208,6 +225,11 @@ namespace RedditSharp
         private HttpWebRequest CreateRequest(Uri uri, string method)
         {
             EnforceRateLimit();
+            return CreateRequestBase(uri, method);
+        }
+
+        private HttpWebRequest CreateRequestBase(Uri uri, string method)
+        {
             var request = (HttpWebRequest)WebRequest.Create(uri);
             request.CookieContainer = Cookies;
             if (Type.GetType("Mono.Runtime") != null)
@@ -250,6 +272,13 @@ namespace RedditSharp
 
         public void WritePostBody(Stream stream, object data, params string[] additionalFields)
         {
+            var raw = FormatWritePostBody(data, additionalFields);
+            stream.Write(raw, 0, raw.Length);
+            stream.Close();
+        }
+
+        public byte[] FormatWritePostBody(object data, params string[] additionalFields)
+        {
             var type = data.GetType();
             var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             string value = "";
@@ -266,9 +295,7 @@ namespace RedditSharp
                 value += additionalFields[i] + "=" + HttpUtility.UrlEncode(entry).Replace(";", "%3B").Replace("&", "%26") + "&";
             }
             value = value.Remove(value.Length - 1); // Remove trailing &
-            var raw = Encoding.UTF8.GetBytes(value);
-            stream.Write(raw, 0, raw.Length);
-            stream.Close();
+            return Encoding.UTF8.GetBytes(value);
         }
     }
 }
