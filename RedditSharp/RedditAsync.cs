@@ -11,6 +11,14 @@ namespace RedditSharp
 {
     public partial class Reddit
     {
+        public async Task<AuthenticatedUser> LogInAsync(string accessToken)
+        {
+            WebAgent.RootDomain = OAuthDomainUrl;
+            _webAgent.AccessToken = accessToken;
+            await InitOrUpdateUserAsync();
+            return User;
+        }
+
         /// <summary>
         /// Logs in the current Reddit instance.
         /// </summary>

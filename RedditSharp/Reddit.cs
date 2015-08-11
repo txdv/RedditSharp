@@ -108,18 +108,12 @@ namespace RedditSharp
             WebAgent.RootDomain = "www.reddit.com";
         }
 
-        public Reddit(string username, string password, bool useSsl = true)
-            : this(useSsl)
-        {
-            LogIn(username, password, useSsl);
-        }
-
-        public Reddit(string accessToken)
-            : this(true)
+        public AuthenticatedUser LogIn(string accessToken)
         {
             WebAgent.RootDomain = OAuthDomainUrl;
             _webAgent.AccessToken = accessToken;
             InitOrUpdateUser();
+            return User;
         }
 
         /// <summary>
