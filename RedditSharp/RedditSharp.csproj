@@ -99,6 +99,7 @@
     <Compile Include="WebAgentAsync.cs" />
     <Compile Include="IWebAgentAsync.cs" />
     <Compile Include="IWebAgentBase.cs" />
+    <Compile Include="RedditAsync.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

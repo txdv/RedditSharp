@@ -12,7 +12,7 @@ namespace RedditSharp
     /// <summary>
     /// Class to communicate with Reddit.com
     /// </summary>
-    public class Reddit
+    public partial class Reddit
     {
         #region Constant Urls
 
@@ -204,13 +204,13 @@ namespace RedditSharp
 
         #endregion Obsolete Getter Methods
 
-        public Subreddit GetSubreddit(string name)
+        private string FixSubreddit(string name)
         {
             if (name.StartsWith("r/"))
                 name = name.Substring(2);
             if (name.StartsWith("/r/"))
                 name = name.Substring(3);
-            return GetThing<Subreddit>(string.Format(SubredditAboutUrl, name));
+            return name;
         }
 
         /// <summary>
@@ -218,13 +218,9 @@ namespace RedditSharp
         /// </summary>
         /// <param name="name">The name of the subreddit</param>
         /// <returns>The Subreddit by given name</returns>
-        public async Task<Subreddit> GetSubredditAsync(string name)
+        public Subreddit GetSubreddit(string name)
         {
-            if (name.StartsWith("r/"))
-                name = name.Substring(2);
-            if (name.StartsWith("/r/"))
-                name = name.Substring(3);
-            return await GetThingAsync<Subreddit>(string.Format(SubredditAboutUrl, name));
+            return GetThing<Subreddit>(string.Format(SubredditAboutUrl, FixSubreddit(name)));
         }
 
         public Domain GetDomain(string domain)
@@ -320,17 +316,22 @@ namespace RedditSharp
             return Thing.Parse(this, json["data"]["children"][0], _webAgent);
         }
 
+        private Uri CreateUri(string subreddit, string name, string linkName)
+        {
+            if (linkName.StartsWith("t3_"))
+                linkName = linkName.Substring(3);
+            if (name.StartsWith("t1_"))
+                name = name.Substring(3);
+
+            var url = string.Format(GetCommentUrl, subreddit, linkName, name);
+            return new Uri(url);
+        }
+
         public Comment GetComment(string subreddit, string name, string linkName)
         {
             try
             {
-                if (linkName.StartsWith("t3_"))
-                    linkName = linkName.Substring(3);
-                if (name.StartsWith("t1_"))
-                    name = name.Substring(3);
-
-                var url = string.Format(GetCommentUrl, subreddit, linkName, name);
-                return GetComment(new Uri(url));
+                return GetComment(CreateUri(subreddit, linkName, name));
             }
             catch (WebException)
             {
@@ -362,16 +363,6 @@ namespace RedditSharp
         }
 
         #region Helpers
-
-        protected async internal Task<T> GetThingAsync<T>(string url) where T : Thing
-        {
-            var request = _webAgent.CreateGet(url);
-            var response = request.GetResponse();
-            var data = _webAgent.GetResponseString(response.GetResponseStream());
-            var json = JToken.Parse(data);
-            var ret = await Thing.ParseAsync(this, json, _webAgent);
-            return (T)ret;
-        }
 
         protected internal T GetThing<T>(string url) where T : Thing
         {

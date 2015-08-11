@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 
 namespace RedditSharp
 {
-    public interface IWebAgent : IWebAgentBase
+    public interface IWebAgent : IWebAgentBase, IWebAgentAsync
     {
         HttpWebRequest CreateRequest(string url, string method);
         HttpWebRequest CreateGet(string url);
